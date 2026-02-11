@@ -1,0 +1,982 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hand Gesture Puzzle - With Sound Effects</title>
+<style>
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: #050505;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  overflow: hidden;
+  color: #fff;
+}
+
+#container {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  background: #000;
+  overflow: hidden;
+}
+
+#videoElement {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1);
+}
+
+#canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.glass-panel {
+  background: rgba(15, 15, 15, 0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 24px 0 rgba(0, 0, 0, 0.6);
+  border-radius: 12px;
+  color: #e0e0e0;
+}
+
+#hud {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  padding: 16px;
+  min-width: 220px;
+  z-index: 1000;
+}
+
+#hud .state-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  color: rgba(255, 255, 255, 0.5);
+  margin-bottom: 4px;
+  text-transform: uppercase;
+}
+
+#hud .state-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 12px;
+  letter-spacing: 0.5px;
+}
+
+#hud .info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.7);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  padding-bottom: 3px;
+}
+
+#hud .info-row span {
+  font-weight: 500;
+  color: #fff;
+  font-family: 'Consolas', monospace;
+}
+
+#frameData {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  display: none;
+}
+
+#frameData .data-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: #00ff9d;
+  font-family: 'Consolas', monospace;
+  margin-bottom: 2px;
+}
+
+#hud .fingers {
+  margin-top: 12px;
+  padding-top: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.finger-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+  transition: all 0.2s;
+}
+
+.finger-dot.active {
+  background: #00ff9d;
+  box-shadow: 0 0 8px rgba(0, 255, 157, 0.6);
+}
+
+#instructions {
+  position: absolute;
+  bottom: 30px;
+  right: 30px;
+  padding: 16px 20px;
+  min-width: 260px;
+  z-index: 1000;
+  text-align: left;
+}
+
+#instructions h3 {
+  margin-bottom: 12px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 8px;
+}
+
+#instructions .step {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12px;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+#instructions .step:last-child {
+  margin-bottom: 0;
+}
+
+.icon-box {
+  width: 28px;
+  height: 28px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-right: 12px;
+  flex-shrink: 0;
+}
+
+.icon-box svg {
+  width: 16px;
+  height: 16px;
+  fill: #e0e0e0;
+}
+
+.text-box strong {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 1px;
+  color: #fff;
+}
+
+.text-box span {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+#resetBtn {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: rgba(0, 0, 0, 0.4);
+  color: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  cursor: pointer;
+  z-index: 1000;
+  backdrop-filter: blur(10px);
+  transition: all 0.3s ease;
+}
+
+#resetBtn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.loader {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: rgba(255, 255, 255, 0.8);
+  font-weight: 300;
+  font-size: 12px;
+  z-index: 1500;
+  text-align: center;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+.loader-spinner {
+  width: 30px;
+  height: 30px;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-top: 2px solid #00ff9d;
+  border-radius: 50%;
+  margin: 0 auto 10px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin { 
+  0% { transform: rotate(0deg); } 
+  100% { transform: rotate(360deg); } 
+}
+</style>
+</head>
+<body>
+
+<div id="container">
+  <video id="videoElement" autoplay playsinline muted></video>
+  <canvas id="canvas"></canvas>
+  
+  <div id="hud" class="glass-panel">
+    <div class="state-label">System State</div>
+    <div class="state-value" id="stateText">INIT</div>
+    
+    <div class="info-row">Gesture <span id="gestureText">-</span></div>
+    <div class="info-row">Confidence <span id="confidenceText">0%</span></div>
+    <div class="info-row">Hands <span id="handsText">0</span></div>
+    
+    <div id="frameData">
+      <div class="state-label" style="margin-bottom:4px">Frame Data</div>
+      <div class="data-row">X: <span id="frameX">0</span></div>
+      <div class="data-row">Y: <span id="frameY">0</span></div>
+      <div class="data-row">W: <span id="frameW">0</span></div>
+      <div class="data-row">H: <span id="frameH">0</span></div>
+    </div>
+    
+    <div class="fingers">
+      <div class="finger-dot" id="thumbInd" title="Thumb"></div>
+      <div class="finger-dot" id="indexInd" title="Index"></div>
+      <div class="finger-dot" id="middleInd" title="Middle"></div>
+      <div class="finger-dot" id="ringInd" title="Ring"></div>
+      <div class="finger-dot" id="pinkyInd" title="Pinky"></div>
+    </div>
+  </div>
+  
+  <button id="resetBtn">Reset</button>
+  
+  <div id="instructions" class="glass-panel">
+    <h3>Controls</h3>
+    
+    <div class="step">
+      <div class="icon-box">
+        <svg viewBox="0 0 24 24"><path d="M22,18.78L19.5,9.66L17.2,10.28L17.72,12.19C17.72,12.19 13.92,10.66 12.89,6.72L15.34,6.06L14.69,3.63L7.75,5.5L8.4,7.94L10.84,7.28C10.84,7.28 11.89,11.22 15.69,12.75L15.16,10.84L17.5,10.22L20,19.34L22,18.78Z" /></svg>
+      </div>
+      <div class="text-box">
+        <strong>Pinch (Both Hands)</strong>
+        <span>Draw Frame</span>
+      </div>
+    </div>
+    
+    <div class="step">
+      <div class="icon-box">
+        <svg viewBox="0 0 24 24"><path d="M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2M12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4M11,6.5V13.5H13V6.5H11M7.5,8.5V13.5H9.5V8.5H7.5M14.5,8.5V13.5H16.5V8.5H14.5Z" /></svg>
+      </div>
+      <div class="text-box">
+        <strong>Open Palms</strong>
+        <span>Capture Photo</span>
+      </div>
+    </div>
+    
+    <div class="step">
+      <div class="icon-box">
+        <svg viewBox="0 0 24 24"><path d="M16.5,5C15,5 13.5,6 12,7C10.5,6 9,5 7.5,5C5.5,5 4,6.5 4,8.5C4,9.5 4.5,10.5 5,11L12,19L19,11C19.5,10.5 20,9.5 20,8.5C20,6.5 18.5,5 16.5,5M7.5,7C8.5,7 9.5,7.5 10.5,8.5L12,10L13.5,8.5C14.5,7.5 15.5,7 16.5,7C17.5,7 18,7.5 18,8.5C18,9 17.5,9.5 17.5,9.5L12,16L6.5,9.5C6.5,9.5 6,9 6,8.5C6,7.5 6.5,7 7.5,7Z" /></svg>
+      </div>
+      <div class="text-box">
+        <strong>Peace Sign</strong>
+        <span>Create Puzzle</span>
+      </div>
+    </div>
+    
+    <div class="step">
+      <div class="icon-box">
+        <svg viewBox="0 0 24 24"><path d="M12,2C12,2 11,2.19 11,4V10H9V12H11V16L7,12V14L12,20L17,14V12L13,16V12H15V10H13V4C13,2.19 12,2 12,2Z" /></svg>
+      </div>
+      <div class="text-box">
+        <strong>Point + Pinch</strong>
+        <span>Move Puzzle Piece</span>
+      </div>
+    </div>
+  </div>
+  
+  <div class="loader" id="loader">
+    <div class="loader-spinner"></div>
+    Initializing System...
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+
+<script>
+// ========================================
+// SOUND EFFECTS (Web Audio API)
+// ========================================
+const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+function playBeep(frequency, duration, type = 'sine') {
+  const oscillator = audioContext.createOscillator();
+  const gainNode = audioContext.createGain();
+  
+  oscillator.connect(gainNode);
+  gainNode.connect(audioContext.destination);
+  
+  oscillator.frequency.value = frequency;
+  oscillator.type = type;
+  
+  gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+  gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration);
+  
+  oscillator.start(audioContext.currentTime);
+  oscillator.stop(audioContext.currentTime + duration);
+}
+
+function playFrameDrawSound() {
+  // 프레임 그리기 시작 - 부드러운 상승음
+  playBeep(400, 0.1, 'sine');
+  setTimeout(() => playBeep(600, 0.1, 'sine'), 50);
+}
+
+function playCaptureSound() {
+  // 사진 캡처 - 카메라 셔터 소리 (클릭)
+  playBeep(1000, 0.05, 'square');
+  setTimeout(() => playBeep(800, 0.1, 'sine'), 50);
+}
+
+function playGridCutSound() {
+  // 퍼즐 자르기 - 빠른 연속음
+  for (let i = 0; i < 3; i++) {
+    setTimeout(() => playBeep(600 + i * 200, 0.08, 'triangle'), i * 80);
+  }
+}
+
+function playTileGrabSound() {
+  // 퍼즐 조각 잡기 - 짧은 클릭
+  playBeep(800, 0.05, 'sine');
+}
+
+function playTileReleaseSound() {
+  // 퍼즐 조각 놓기 - 낮은 톤
+  playBeep(400, 0.1, 'sine');
+}
+
+// ========================================
+// CONFIGURATION
+// ========================================
+const CONFIG = {
+  PINCH_THRESHOLD: 0.08,
+  GESTURE_STABLE_FRAMES: 5,
+  EMA_ALPHA: 0.25,
+  MIN_RECT_SIZE: 50,
+  FINGER_EXTENSION_ANGLE_THRESHOLD: 160,
+  FINGER_Y_THRESHOLD: 0.02,
+};
+
+const STATES = {
+  IDLE: 'IDLE',
+  FRAME_DRAW: 'FRAME_DRAW',
+  CAPTURE: 'CAPTURE',
+  GRID_CUT: 'GRID_CUT',
+  PUZZLE_MOVE: 'PUZZLE_MOVE'
+};
+
+let currentState = STATES.IDLE;
+let stateData = {
+  frameRect: null,
+  capturedImage: null,
+  tiles: [],
+  draggedTile: null,
+  cursorPos: null
+};
+
+let trails = []; // 트레일 효과
+
+class FingerDetector {
+  constructor() {
+    this.fingers = {
+      thumb: { tip: 4, dip: 3, pip: 2, mcp: 1 },
+      index: { tip: 8, dip: 7, pip: 6, mcp: 5 },
+      middle: { tip: 12, dip: 11, pip: 10, mcp: 9 },
+      ring: { tip: 16, dip: 15, pip: 14, mcp: 13 },
+      pinky: { tip: 20, dip: 19, pip: 18, mcp: 17 }
+    };
+  }
+
+  calculateAngle(p1, p2, p3) {
+    const v1 = { x: p1.x - p2.x, y: p1.y - p2.y, z: p1.z - p2.z };
+    const v2 = { x: p3.x - p2.x, y: p3.y - p2.y, z: p3.z - p2.z };
+    const dot = v1.x * v2.x + v1.y * v2.y + v1.z * v2.z;
+    const mag1 = Math.sqrt(v1.x * v1.x + v1.y * v1.y + v1.z * v1.z);
+    const mag2 = Math.sqrt(v2.x * v2.x + v2.y * v2.y + v2.z * v2.z);
+    if (mag1 === 0 || mag2 === 0) return 180;
+    return Math.acos(Math.max(-1, Math.min(1, dot / (mag1 * mag2)))) * (180 / Math.PI);
+  }
+
+  isFingerExtended(landmarks, fingerName) {
+    const finger = this.fingers[fingerName];
+    const tip = landmarks[finger.tip];
+    const pip = landmarks[finger.pip];
+    const mcp = landmarks[finger.mcp];
+    
+    if (fingerName === 'thumb') {
+      const thumbAngle = this.calculateAngle(landmarks[finger.mcp], landmarks[finger.pip], landmarks[finger.tip]);
+      return thumbAngle > 140;
+    }
+    
+    const pipAngle = this.calculateAngle(mcp, pip, tip);
+    const yDistance = pip.y - tip.y;
+    return pipAngle > CONFIG.FINGER_EXTENSION_ANGLE_THRESHOLD && yDistance > CONFIG.FINGER_Y_THRESHOLD;
+  }
+
+  detectAllFingers(landmarks) {
+    return {
+      thumb: this.isFingerExtended(landmarks, 'thumb'),
+      index: this.isFingerExtended(landmarks, 'index'),
+      middle: this.isFingerExtended(landmarks, 'middle'),
+      ring: this.isFingerExtended(landmarks, 'ring'),
+      pinky: this.isFingerExtended(landmarks, 'pinky')
+    };
+  }
+
+  classifyGesture(fingerStates, landmarks) {
+    const { thumb, index, middle, ring, pinky } = fingerStates;
+    const thumbTip = landmarks[4];
+    const indexTip = landmarks[8];
+    const pinchDist = Math.sqrt(Math.pow(thumbTip.x - indexTip.x, 2) + Math.pow(thumbTip.y - indexTip.y, 2));
+    const isPinching = pinchDist < CONFIG.PINCH_THRESHOLD;
+    const pinchPoint = { x: (thumbTip.x + indexTip.x) / 2, y: (thumbTip.y + indexTip.y) / 2 };
+
+    if (isPinching && !middle && !ring && !pinky) {
+      return { type: 'PINCH', confidence: 0.95, fingerStates, pinchPoint, isPinching: true };
+    }
+    if (index && middle && !ring && !pinky) {
+      return { type: 'PEACE', confidence: 0.95, fingerStates };
+    }
+    if (index && !middle && !ring && !pinky) {
+      return { type: isPinching ? 'PINCH' : 'POINT', confidence: 0.90, fingerStates, position: { x: indexTip.x, y: indexTip.y }, pinchPoint, isPinching };
+    }
+    if (thumb && index && middle && ring && pinky) {
+      return { type: 'OPEN_PALM', confidence: 0.95, fingerStates };
+    }
+    return { type: 'UNKNOWN', confidence: 0, fingerStates };
+  }
+}
+
+class GestureDetector {
+  constructor() {
+    this.fingerDetector = new FingerDetector();
+    this.gestureHistory = [];
+    this.maxHistory = CONFIG.GESTURE_STABLE_FRAMES;
+    this.smoothedLandmarks = {};
+  }
+
+  smoothLandmarks(landmarks, handIndex) {
+    if (!this.smoothedLandmarks[handIndex]) {
+      this.smoothedLandmarks[handIndex] = landmarks.map(l => ({...l}));
+    } else {
+      landmarks.forEach((landmark, i) => {
+        const smooth = this.smoothedLandmarks[handIndex][i];
+        smooth.x = smooth.x * (1 - CONFIG.EMA_ALPHA) + landmark.x * CONFIG.EMA_ALPHA;
+        smooth.y = smooth.y * (1 - CONFIG.EMA_ALPHA) + landmark.y * CONFIG.EMA_ALPHA;
+        smooth.z = smooth.z * (1 - CONFIG.EMA_ALPHA) + landmark.z * CONFIG.EMA_ALPHA;
+      });
+    }
+    return this.smoothedLandmarks[handIndex];
+  }
+
+  detectGesture(landmarks) {
+    const fingerStates = this.fingerDetector.detectAllFingers(landmarks);
+    return this.fingerDetector.classifyGesture(fingerStates, landmarks);
+  }
+
+  addToHistory(gestureType) {
+    this.gestureHistory.push(gestureType);
+    if (this.gestureHistory.length > this.maxHistory) this.gestureHistory.shift();
+  }
+
+  isStable(gestureType) {
+    if (this.gestureHistory.length < this.maxHistory) return false;
+    return this.gestureHistory.every(g => g === gestureType);
+  }
+
+  reset() { this.gestureHistory = []; }
+}
+
+const gestureDetector = new GestureDetector();
+
+const video = document.getElementById('videoElement');
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+let canvasWidth, canvasHeight;
+let videoWidth, videoHeight;
+
+function resizeCanvas() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  canvasWidth = canvas.width;
+  canvasHeight = canvas.height;
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
+async function setupWebcam() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { width: 1280, height: 720, facingMode: 'user' }
+    });
+    video.srcObject = stream;
+    return new Promise((resolve) => {
+      video.onloadedmetadata = () => {
+        videoWidth = video.videoWidth;
+        videoHeight = video.videoHeight;
+        resolve(video);
+      };
+    });
+  } catch (err) {
+    console.error(err);
+    alert('Camera error');
+  }
+}
+
+let handsDetected = [];
+let frameCount = 0;
+let lastTime = performance.now();
+let fps = 0;
+let currentGestures = [];
+
+const hands = new Hands({
+  locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+});
+
+hands.setOptions({
+  maxNumHands: 2,
+  modelComplexity: 1,
+  minDetectionConfidence: 0.7,
+  minTrackingConfidence: 0.7
+});
+
+hands.onResults(onHandsResults);
+
+function onHandsResults(results) {
+  handsDetected = results.multiHandLandmarks || [];
+  
+  frameCount++;
+  const now = performance.now();
+  if (now - lastTime >= 1000) {
+    fps = frameCount;
+    frameCount = 0;
+    lastTime = now;
+  }
+  
+  currentGestures = processGestures(handsDetected);
+  updateHUD();
+  processStateMachine(currentGestures);
+  render();
+}
+
+function processGestures(hands) {
+  if (hands.length === 0) {
+    gestureDetector.reset();
+    return [];
+  }
+  return hands.map((hand, i) => {
+    const smoothed = gestureDetector.smoothLandmarks(hand, i);
+    return gestureDetector.detectGesture(smoothed);
+  });
+}
+
+let hasPlayedFrameSound = false;
+
+function processStateMachine(gestures) {
+  switch (currentState) {
+    case STATES.IDLE:
+      hasPlayedFrameSound = false;
+      if (gestures.length === 2 && gestures[0].type === 'PINCH' && gestures[1].type === 'PINCH') {
+        gestureDetector.addToHistory('PINCH_BOTH');
+        if (gestureDetector.isStable('PINCH_BOTH')) {
+          playFrameDrawSound();
+          transitionTo(STATES.FRAME_DRAW);
+        }
+      } else {
+        gestureDetector.reset();
+      }
+      break;
+      
+    case STATES.FRAME_DRAW:
+      document.getElementById('frameData').style.display = 'block';
+      if (gestures.length === 2 && gestures[0].type === 'PINCH' && gestures[1].type === 'PINCH') {
+        updateFrameRect(gestures);
+        gestureDetector.reset();
+      } else if (gestures.length === 2 && gestures[0].type === 'OPEN_PALM' && gestures[1].type === 'OPEN_PALM') {
+        gestureDetector.addToHistory('OPEN_BOTH');
+        if (gestureDetector.isStable('OPEN_BOTH') && stateData.frameRect) {
+          playCaptureSound();
+          captureFrame();
+        }
+      } else {
+        gestureDetector.reset();
+      }
+      break;
+      
+    case STATES.CAPTURE:
+      document.getElementById('frameData').style.display = 'none';
+      if (gestures.length === 2 && gestures[0].type === 'PEACE' && gestures[1].type === 'PEACE') {
+        gestureDetector.addToHistory('PEACE_BOTH');
+        if (gestureDetector.isStable('PEACE_BOTH')) {
+          playGridCutSound();
+          cutIntoGrid();
+          transitionTo(STATES.PUZZLE_MOVE);
+        }
+      } else {
+        gestureDetector.reset();
+      }
+      break;
+      
+    case STATES.PUZZLE_MOVE:
+      handlePuzzleInteraction(gestures);
+      break;
+  }
+}
+
+function transitionTo(newState) {
+  currentState = newState;
+  gestureDetector.reset();
+  if (newState === STATES.IDLE) {
+    stateData = { frameRect: null, capturedImage: null, tiles: [], draggedTile: null, cursorPos: null };
+    document.getElementById('frameData').style.display = 'none';
+  }
+}
+
+function updateFrameRect(gestures) {
+  const pinch1 = gestures[0].pinchPoint;
+  const pinch2 = gestures[1].pinchPoint;
+  
+  const x1_px = pinch1.x * videoWidth;
+  const y1_px = pinch1.y * videoHeight;
+  const x2_px = pinch2.x * videoWidth;
+  const y2_px = pinch2.y * videoHeight;
+  
+  const xMin = Math.max(0, Math.min(x1_px, x2_px));
+  const yMin = Math.max(0, Math.min(y1_px, y2_px));
+  const xMax = Math.min(videoWidth, Math.max(x1_px, x2_px));
+  const yMax = Math.min(videoHeight, Math.max(y1_px, y2_px));
+  
+  stateData.frameRect = { xMin, yMin, xMax, yMax };
+  
+  document.getElementById('frameX').textContent = Math.round(xMin);
+  document.getElementById('frameY').textContent = Math.round(yMin);
+  document.getElementById('frameW').textContent = Math.round(xMax - xMin);
+  document.getElementById('frameH').textContent = Math.round(yMax - yMin);
+}
+
+function captureFrame() {
+  if (!stateData.frameRect) return;
+  const rect = stateData.frameRect;
+  const w = rect.xMax - rect.xMin;
+  const h = rect.yMax - rect.yMin;
+  
+  if (w < CONFIG.MIN_RECT_SIZE || h < CONFIG.MIN_RECT_SIZE) return;
+  
+  const captureCanvas = document.createElement('canvas');
+  captureCanvas.width = w;
+  captureCanvas.height = h;
+  const captureCtx = captureCanvas.getContext('2d');
+  
+  captureCtx.drawImage(video, rect.xMin, rect.yMin, w, h, 0, 0, w, h);
+  stateData.capturedImage = captureCanvas;
+  transitionTo(STATES.CAPTURE);
+}
+
+function cutIntoGrid() {
+  const img = stateData.capturedImage;
+  if (!img) return;
+  
+  const scaleX = canvasWidth / videoWidth;
+  const scaleY = canvasHeight / videoHeight;
+  
+  const startX = stateData.frameRect.xMin * scaleX;
+  const startY = stateData.frameRect.yMin * scaleY;
+  
+  const totalDisplayWidth = (stateData.frameRect.xMax - stateData.frameRect.xMin) * scaleX;
+  const totalDisplayHeight = (stateData.frameRect.yMax - stateData.frameRect.yMin) * scaleY;
+  
+  const tileDisplayWidth = totalDisplayWidth / 3;
+  const tileDisplayHeight = totalDisplayHeight / 3;
+  
+  const tileSourceWidth = img.width / 3;
+  const tileSourceHeight = img.height / 3;
+  
+  stateData.tiles = [];
+  
+  for (let row = 0; row < 3; row++) {
+    for (let col = 0; col < 3; col++) {
+      const tileCanvas = document.createElement('canvas');
+      tileCanvas.width = tileSourceWidth;
+      tileCanvas.height = tileSourceHeight;
+      const tileCtx = tileCanvas.getContext('2d');
+      
+      tileCtx.drawImage(
+        img,
+        col * tileSourceWidth, row * tileSourceHeight,
+        tileSourceWidth, tileSourceHeight,
+        0, 0,
+        tileSourceWidth, tileSourceHeight
+      );
+      
+      stateData.tiles.push({
+        canvas: tileCanvas,
+        x: startX + col * tileDisplayWidth,
+        y: startY + row * tileDisplayHeight,
+        width: tileDisplayWidth,
+        height: tileDisplayHeight,
+        zIndex: row * 3 + col,
+        offsetX: 0,
+        offsetY: 0
+      });
+    }
+  }
+}
+
+let wasDragging = false;
+
+function handlePuzzleInteraction(gestures) {
+  if (gestures.length >= 1) {
+    const gesture = gestures[0];
+    if (gesture.type === 'POINT' || gesture.type === 'PINCH') {
+      const pos = gesture.position || gesture.pinchPoint;
+      if (pos) {
+        stateData.cursorPos = { x: pos.x * canvasWidth, y: pos.y * canvasHeight };
+        const isPinching = gesture.isPinching;
+        
+        if (isPinching && !stateData.draggedTile) {
+          const tile = findTileAtPosition(stateData.cursorPos);
+          if (tile) {
+            playTileGrabSound();
+            stateData.draggedTile = tile;
+            tile.zIndex = Math.max(...stateData.tiles.map(t => t.zIndex)) + 1;
+            tile.offsetX = stateData.cursorPos.x - tile.x;
+            tile.offsetY = stateData.cursorPos.y - tile.y;
+            wasDragging = true;
+          }
+        } else if (!isPinching && stateData.draggedTile) {
+          if (wasDragging) {
+            playTileReleaseSound();
+            wasDragging = false;
+          }
+          stateData.draggedTile = null;
+        }
+        
+        if (stateData.draggedTile) {
+          stateData.draggedTile.x = stateData.cursorPos.x - stateData.draggedTile.offsetX;
+          stateData.draggedTile.y = stateData.cursorPos.y - stateData.draggedTile.offsetY;
+        }
+      }
+    }
+  } else {
+    stateData.cursorPos = null;
+    if (stateData.draggedTile && wasDragging) {
+      wasDragging = false;
+    }
+    stateData.draggedTile = null;
+  }
+}
+
+function findTileAtPosition(pos) {
+  const sorted = [...stateData.tiles].sort((a, b) => b.zIndex - a.zIndex);
+  for (const tile of sorted) {
+    if (pos.x >= tile.x && pos.x <= tile.x + tile.width && pos.y >= tile.y && pos.y <= tile.y + tile.height) return tile;
+  }
+  return null;
+}
+
+function render() {
+  ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+  ctx.save();
+  ctx.scale(-1, 1);
+  ctx.translate(-canvasWidth, 0);
+  
+  switch (currentState) {
+    case STATES.FRAME_DRAW:
+      if (stateData.frameRect) {
+        const rect = stateData.frameRect;
+        const scaleX = canvasWidth / videoWidth;
+        const scaleY = canvasHeight / videoHeight;
+        
+        ctx.shadowColor = "rgba(0, 255, 157, 0.5)";
+        ctx.shadowBlur = 15;
+        ctx.strokeStyle = '#00ff9d';
+        ctx.lineWidth = 3;
+        ctx.strokeRect(rect.xMin * scaleX, rect.yMin * scaleY, (rect.xMax - rect.xMin) * scaleX, (rect.yMax - rect.yMin) * scaleY);
+        ctx.shadowBlur = 0;
+      }
+      break;
+      
+    case STATES.CAPTURE:
+      const img = stateData.capturedImage;
+      if (img && stateData.frameRect) {
+        const scaleX = canvasWidth / videoWidth;
+        const scaleY = canvasHeight / videoHeight;
+        
+        const x = stateData.frameRect.xMin * scaleX;
+        const y = stateData.frameRect.yMin * scaleY;
+        const w = (stateData.frameRect.xMax - stateData.frameRect.xMin) * scaleX;
+        const h = (stateData.frameRect.yMax - stateData.frameRect.yMin) * scaleY;
+        
+        ctx.shadowColor = "rgba(0, 0, 0, 0.8)";
+        ctx.shadowBlur = 30;
+        ctx.drawImage(img, x, y, w, h);
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(x, y, w, h);
+        ctx.shadowBlur = 0;
+      }
+      break;
+      
+    case STATES.PUZZLE_MOVE:
+      [...stateData.tiles].sort((a, b) => a.zIndex - b.zIndex).forEach(tile => {
+        ctx.save();
+        ctx.shadowColor = "rgba(0, 0, 0, 0.5)";
+        ctx.shadowBlur = 8;
+        ctx.drawImage(tile.canvas, tile.x, tile.y, tile.width, tile.height);
+        ctx.restore();
+        
+        if (tile === stateData.draggedTile) {
+          ctx.strokeStyle = '#00ff9d';
+          ctx.lineWidth = 3;
+          ctx.strokeRect(tile.x, tile.y, tile.width, tile.height);
+        }
+      });
+      
+      // 트레일 저장
+      if (stateData.cursorPos) {
+        trails.push({ x: stateData.cursorPos.x, y: stateData.cursorPos.y, life: 1.0 });
+      }
+      
+      // 트레일 그리기 및 업데이트
+      ctx.save();
+      for (let i = trails.length - 1; i >= 0; i--) {
+        let p = trails[i];
+        p.life -= 0.1;
+        if (p.life <= 0) {
+          trails.splice(i, 1);
+          continue;
+        }
+        
+        ctx.globalAlpha = p.life;
+        ctx.fillStyle = '#00ff9d';
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 10 * p.life, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+      
+      if (stateData.cursorPos) {
+        ctx.fillStyle = 'rgba(0, 255, 157, 0.5)';
+        ctx.beginPath();
+        ctx.arc(stateData.cursorPos.x, stateData.cursorPos.y, 10, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#00ff9d';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+      break;
+  }
+  ctx.restore();
+}
+
+function updateHUD() {
+  document.getElementById('stateText').textContent = currentState;
+  document.getElementById('handsText').textContent = handsDetected.length;
+  
+  let gestureText = '-';
+  let confidenceText = '0%';
+  let fingerStates = null;
+  
+  if (currentGestures.length > 0) {
+    gestureText = currentGestures.map(g => g.type).join(' + ');
+    const avgConfidence = currentGestures.reduce((sum, g) => sum + g.confidence, 0) / currentGestures.length;
+    confidenceText = `${Math.round(avgConfidence * 100)}%`;
+    fingerStates = currentGestures[0].fingerStates;
+  }
+  
+  document.getElementById('gestureText').textContent = gestureText;
+  document.getElementById('confidenceText').textContent = confidenceText;
+  
+  if (fingerStates) {
+    setFingerDot('thumb', fingerStates.thumb);
+    setFingerDot('index', fingerStates.index);
+    setFingerDot('middle', fingerStates.middle);
+    setFingerDot('ring', fingerStates.ring);
+    setFingerDot('pinky', fingerStates.pinky);
+  } else {
+    ['thumb', 'index', 'middle', 'ring', 'pinky'].forEach(f => setFingerDot(f, false));
+  }
+}
+
+function setFingerDot(name, active) {
+  const el = document.getElementById(`${name}Ind`);
+  if (active) el.classList.add('active');
+  else el.classList.remove('active');
+}
+
+document.getElementById('resetBtn').addEventListener('click', () => {
+  transitionTo(STATES.IDLE);
+});
+
+async function init() {
+  try {
+    document.getElementById('loader').innerHTML = '<div class="loader-spinner"></div>STARTING...';
+    await setupWebcam();
+    document.getElementById('loader').innerHTML = '<div class="loader-spinner"></div>AI MODEL...';
+    const camera = new Camera(video, {
+      onFrame: async () => { await hands.send({ image: video }); },
+      width: 1280, height: 720
+    });
+    await camera.start();
+    document.getElementById('loader').style.display = 'none';
+    transitionTo(STATES.IDLE);
+  } catch (err) {
+    console.error(err);
+    document.getElementById('loader').innerHTML = 'ERROR';
+  }
+}
+
+init();
+</script>
+</body>
+</html>
